@@ -2,17 +2,21 @@ package vector
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 )
 
-// LoadNorm reads normalization.json and validates that no constant is zero
-// (a zero would produce divide-by-zero or always-clamped values downstream).
+// LoadNorm reads normalization.json.
 func LoadNorm(path string) (*Norm, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+	norm := &Norm{}
+	if err := json.Unmarshal(raw, norm); err != nil {
+		return nil, err
+	}
+	return norm, nil
+}
 	norm := &Norm{}
 	if err := json.Unmarshal(raw, norm); err != nil {
 		return nil, err

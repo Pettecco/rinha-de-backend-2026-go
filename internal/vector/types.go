@@ -1,20 +1,13 @@
 // Package vector converts a fraud-score request payload into the 14-dimensional
-// vector expected by the IVF index and exposes the JSON config types loaded
-// once at startup.
 package vector
 
-// Dim is the fixed dimensionality of the fraud-score vector.
+// Dim is the fixed dimensionality of the fraud-score vector
 const Dim = 14
 
-// Sentinel is the value placed in dims 5 and 6 when last_transaction is
-// null. Any reference vector with the same null state will share these
-// values, naturally clustering "no-history" cases together in vector space.
 const Sentinel float64 = -1.0
 
-// DefaultMccRisk is used when an MCC code is absent from the risk table.
 const DefaultMccRisk float64 = 0.5
 
-// Norm holds the normalization constants loaded from normalization.json.
 type Norm struct {
 	MaxAmount            float64 `json:"max_amount"`
 	MaxInstallments      float64 `json:"max_installments"`
@@ -25,5 +18,4 @@ type Norm struct {
 	MaxMerchantAvgAmount float64 `json:"max_merchant_avg_amount"`
 }
 
-// MccRisk maps each MCC code to its risk score in [0, 1].
 type MccRisk map[string]float64
