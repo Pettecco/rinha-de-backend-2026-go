@@ -81,13 +81,39 @@ func (idx *Index) precomputeCentroids(k int) {
 	idx.CentroidsF64 = make([]float64, k*consts.Dim)
 	idx.CentroidNorms = make([]float64, k)
 	for c := 0; c < k; c++ {
-		var norm float64
-		for d := 0; d < consts.Dim; d++ {
-			v := float64(idx.Centroids[c*consts.Dim+d])
-			idx.CentroidsF64[c*consts.Dim+d] = v
-			norm += v * v
-		}
-		idx.CentroidNorms[c] = norm
+		base := c * consts.Dim
+		v0 := float64(idx.Centroids[base+0])
+		v1 := float64(idx.Centroids[base+1])
+		v2 := float64(idx.Centroids[base+2])
+		v3 := float64(idx.Centroids[base+3])
+		v4 := float64(idx.Centroids[base+4])
+		v5 := float64(idx.Centroids[base+5])
+		v6 := float64(idx.Centroids[base+6])
+		v7 := float64(idx.Centroids[base+7])
+		v8 := float64(idx.Centroids[base+8])
+		v9 := float64(idx.Centroids[base+9])
+		v10 := float64(idx.Centroids[base+10])
+		v11 := float64(idx.Centroids[base+11])
+		v12 := float64(idx.Centroids[base+12])
+		v13 := float64(idx.Centroids[base+13])
+
+		idx.CentroidsF64[base+0] = v0
+		idx.CentroidsF64[base+1] = v1
+		idx.CentroidsF64[base+2] = v2
+		idx.CentroidsF64[base+3] = v3
+		idx.CentroidsF64[base+4] = v4
+		idx.CentroidsF64[base+5] = v5
+		idx.CentroidsF64[base+6] = v6
+		idx.CentroidsF64[base+7] = v7
+		idx.CentroidsF64[base+8] = v8
+		idx.CentroidsF64[base+9] = v9
+		idx.CentroidsF64[base+10] = v10
+		idx.CentroidsF64[base+11] = v11
+		idx.CentroidsF64[base+12] = v12
+		idx.CentroidsF64[base+13] = v13
+
+		idx.CentroidNorms[c] = v0*v0 + v1*v1 + v2*v2 + v3*v3 + v4*v4 + v5*v5 + v6*v6 +
+			v7*v7 + v8*v8 + v9*v9 + v10*v10 + v11*v11 + v12*v12 + v13*v13
 	}
 }
 
@@ -105,10 +131,6 @@ func (idx *Index) Close() error {
 
 func (idx *Index) K() int {
 	return len(idx.CentroidNorms)
-}
-
-func (idx *Index) CentroidData() []float32 {
-	return idx.Centroids
 }
 
 func (idx *Index) OffsetsData() []uint32 {

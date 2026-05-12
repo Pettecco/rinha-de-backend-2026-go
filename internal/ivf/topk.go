@@ -1,74 +1,57 @@
 package ivf
 
-type TopKEntry struct {
-	dist    uint32
-	isFraud bool
-}
+import "math"
 
-type TopK struct {
-	entries [5]TopKEntry
-	size    int
-}
+const topK = 5
 
-func (tk *TopK) Push(dist uint32, isFraud bool) {
-	if tk.size < 5 {
-		tk.entries[tk.size] = TopKEntry{dist: dist, isFraud: isFraud}
-		tk.size++
-		if tk.size == 5 {
-			tk.siftUp()
+func pickTopFromDists(distances []float64, K, nProbe int) []uint32 {
+	chosen := make([]uint32, 0, nProbe)
+	chosenDistances := make([]float64, 0, nProbe)
+	worst := math.MaxFloat64
+	worstIdx := 0
+
+	for c := 0; c < K; c++ {
+		d := distances[c]
+		if len(chosen) < nProbe {
+			chosen = append(chosen, uint32(c))
+			chosenDistances = append(chosenDistances, d)
+			if len(chosen) == nProbe {
+				worstIdx = indexOfMax(chosenDistances)
+				worst = chosenDistances[worstIdx]
+			}
+			continue
 		}
-		return
-	}
-
-	if dist >= tk.entries[0].dist {
-		return
-	}
-
-	tk.entries[0] = TopKEntry{dist: dist, isFraud: isFraud}
-	tk.siftDown()
-}
-
-func (tk *TopK) FraudCount() int {
-	count := 0
-	for i := 0; i < tk.size; i++ {
-		if tk.entries[i].isFraud {
-			count++
+		if d < worst {
+			chosen[worstIdx] = uint32(c)
+			chosenDistances[worstIdx] = d
+			worstIdx = indexOfMax(chosenDistances)
+			worst = chosenDistances[worstIdx]
 		}
 	}
-	return count
+	return chosen
 }
 
-func (tk *TopK) Reset() {
-	tk.size = 0
-}
-
-func (tk *TopK) siftUp() {
-	for i := tk.size/2 - 1; i >= 0; i-- {
-		tk.siftDownFrom(i)
+func indexOfMax(xs []float64) int {
+	idx := 0
+	for i := 1; i < len(xs); i++ {
+		if xs[i] > xs[idx] {
+			idx = i
+		}
 	}
+	return idx
 }
 
-func (tk *TopK) siftDown() {
-	tk.siftDownFrom(0)
-}
-
-func (tk *TopK) siftDownFrom(i int) {
-	n := tk.size
-	for {
-		smallest := i
-		left := 2*i + 1
-		right := 2*i + 2
-
-		if left < n && tk.entries[left].dist > tk.entries[smallest].dist {
-			smallest = left
-		}
-		if right < n && tk.entries[right].dist > tk.entries[smallest].dist {
-			smallest = right
-		}
-		if smallest == i {
-			break
-		}
-		tk.entries[i], tk.entries[smallest] = tk.entries[smallest], tk.entries[i]
-		i = smallest
+func updateTopK(topDistances *[topK]int64, topLabels *[topK]uint8, worstIdx int, candidateDist int64, candidateLabel uint8) int {
+	if candidateDist >= topDistances[worstIdx] {
+		return worstIdx
 	}
+	topDistances[worstIdx] = candidateDist
+	topLabels[worstIdx] = candidateLabel
+	newWorst := 0
+	for k := 1; k < topK; k++ {
+		if topDistances[k] > topDistances[newWorst] {
+			newWorst = k
+		}
+	}
+	return newWorst
 }
