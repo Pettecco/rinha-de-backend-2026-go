@@ -14,3 +14,6 @@ down: ## Stop and remove containers
 
 logs: ## Tail compose logs
 	docker compose logs -f
+
+bench: ## Run k6 benchmark
+	k6 run test/test.js

@@ -1,6 +1,8 @@
 services:
   api1: &api
-    build: ./cmd/api
+    build:
+      context: .
+      dockerfile: cmd/api/Dockerfile
     environment:
       LISTEN_ADDR: '/run/sock/api1.sock'
       GOMAXPROCS: '1'
