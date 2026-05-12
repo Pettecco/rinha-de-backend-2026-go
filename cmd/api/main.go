@@ -4,7 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
+	"time"
 
 	"github.com/valyala/fasthttp"
 	"rinha26/internal/ivf"
@@ -45,22 +45,17 @@ func handler(ctx *fasthttp.RequestCtx) {
 func main() {
 	var err error
 
-	dataDir := os.Getenv("DATA_DIR")
-	if dataDir == "" {
-		dataDir = "dataset"
-	}
-
-	norm, err = vector.LoadNorm(dataDir + "/normalization.json")
+	norm, err = vector.LoadNorm("dataset/normalization.json")
 	if err != nil {
 		log.Fatalf("load norm: %v", err)
 	}
 
-	mccRisk, err = vector.LoadMccRisk(dataDir + "/mcc_risk.json")
+	mccRisk, err = vector.LoadMccRisk("dataset/mcc_risk.json")
 	if err != nil {
 		log.Fatalf("load mcc: %v", err)
 	}
 
-	index, err = ivf.Open(dataDir + "/ivf.bin")
+	index, err = ivf.Open("dataset/ivf.bin")
 	if err != nil {
 		log.Fatalf("open index: %v", err)
 	}
@@ -75,26 +70,27 @@ func main() {
 	log.Printf("listening on %s", addr)
 
 	server := &fasthttp.Server{
-		Handler:                       handler,
-		Concurrency:                   256,
+		Handler:                  handler,
+		Name:                     "rinha26",
+		Concurrency:              256,
 		DisableHeaderNamesNormalizing: true,
-		ReadBufferSize:                4096,
-		WriteBufferSize:               1024,
+		NoDefaultServerHeader:    true,
+		NoDefaultContentType:     true,
+		NoDefaultDate:            true,
+		ReadBufferSize:           2048,
+		WriteBufferSize:          256,
+		MaxRequestBodySize:       8 << 10,
+		ReadTimeout:              2 * time.Second,
+		WriteTimeout:             2 * time.Second,
+		IdleTimeout:              60 * time.Second,
+		ReduceMemoryUsage:        false,
 	}
 
-	if strings.HasPrefix(addr, "/") {
-		os.Remove(addr)
-		ln, err := net.Listen("unix", addr)
-		if err != nil {
-			log.Fatalf("listen unix: %v", err)
-		}
-		os.Chmod(addr, 0666)
-		log.Fatal(server.Serve(ln))
-	} else {
-		ln, err := net.Listen("tcp", addr)
-		if err != nil {
-			log.Fatalf("listen tcp: %v", err)
-		}
-		log.Fatal(server.Serve(ln))
+	os.Remove(addr)
+	ln, err := net.Listen("unix", addr)
+	if err != nil {
+		log.Fatalf("listen unix: %v", err)
 	}
+	os.Chmod(addr, 0666)
+	log.Fatal(server.Serve(ln))
 }

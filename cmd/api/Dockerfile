@@ -9,11 +9,11 @@ RUN go build -o api ./cmd/api
 RUN ./indexer
 
 FROM alpine:3.20
+WORKDIR /app/dataset
+COPY --from=builder /src/api /app/
+COPY --from=builder /src/dataset/ivf.bin .
+COPY --from=builder /src/dataset/normalization.json .
+COPY --from=builder /src/dataset/mcc_risk.json .
 WORKDIR /app
-COPY --from=builder /src/api .
-COPY --from=builder /src/dataset/ivf.bin /data/ivf.bin
-COPY --from=builder /src/dataset/normalization.json /data/
-COPY --from=builder /src/dataset/mcc_risk.json /data/
-ENV DATA_DIR=/data
 EXPOSE 8080
 CMD ["./api"]
