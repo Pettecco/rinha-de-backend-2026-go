@@ -4,93 +4,52 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/valyala/fasthttp"
 	"rinha26/internal/ivf"
-	"rinha26/internal/vec"
+	"rinha26/internal/vector"
 )
 
-var responses = [6][]byte{
-	[]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 40\r\nConnection: keep-alive\r\n\r\n{\"approved\":true,\"fraud_score\":0.0}"),
-	[]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 40\r\nConnection: keep-alive\r\n\r\n{\"approved\":true,\"fraud_score\":0.2}"),
-	[]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 40\r\nConnection: keep-alive\r\n\r\n{\"approved\":true,\"fraud_score\":0.4}"),
-	[]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 41\r\nConnection: keep-alive\r\n\r\n{\"approved\":false,\"fraud_score\":0.6}"),
-	[]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 41\r\nConnection: keep-alive\r\n\r\n{\"approved\":false,\"fraud_score\":0.8}"),
-	[]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 40\r\nConnection: keep-alive\r\n\r\n{\"approved\":false,\"fraud_score\":1.0}"),
-}
-
-var fallback = []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 41\r\nConnection: keep-alive\r\n\r\n{\"approved\":false,\"fraud_score\":0.6}")
-
 var index *ivf.Index
-var norm *vec.Norm
+var norm *vector.Norm
 var mccRisk map[string]float64
-var nProbeFast int
-var nProbeFull int
+const (
+	nProbeFast = 8
+	nProbeFull = 28
+)
 
 func handler(ctx *fasthttp.RequestCtx) {
 	if ctx.IsGet() {
-		if string(ctx.Path()) == "/ready" {
-			ctx.SetStatusCode(200)
-			return
-		}
-		ctx.SetStatusCode(404)
-		return
-	}
-
-	if !ctx.IsPost() || string(ctx.Path()) != "/fraud-score" {
-		ctx.SetStatusCode(404)
-		return
-	}
-
-	body := ctx.PostBody()
-	if len(body) == 0 {
-		ctx.Write(fallback)
+		ctx.SetStatusCode(200)
 		return
 	}
 
 	var query [14]float64
-	if err := vec.FromPayload(body, &query, norm, mccRisk); err != nil {
-		ctx.Write(fallback)
+	if err := vector.FromPayload(ctx.PostBody(), &query, norm, mccRisk); err != nil {
+		ctx.SetStatusCode(400)
 		return
 	}
 
 	fraudCount := index.FraudScore(query, nProbeFast, nProbeFull)
+	ctx.SetContentType("application/json")
 	ctx.Write(responses[fraudCount])
-}
-
-func envInt(key string, def int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return def
-	}
-	return n
 }
 
 func main() {
 	var err error
 
-	norm, err = vec.LoadNorm("dataset/normalization.json")
+	norm, err = vector.LoadNorm("dataset/normalization.json")
 	if err != nil {
 		log.Fatalf("load norm: %v", err)
 	}
 
-	mccRisk, err = vec.LoadMccRisk("dataset/mcc_risk.json")
+	mccRisk, err = vector.LoadMccRisk("dataset/mcc_risk.json")
 	if err != nil {
 		log.Fatalf("load mcc: %v", err)
 	}
 
-	idxPath := os.Getenv("INDEX_PATH")
-	if idxPath == "" {
-		idxPath = "dataset/ivf.bin"
-	}
-
-	index, err = ivf.Open(idxPath)
+	index, err = ivf.Open("dataset/ivf.bin")
 	if err != nil {
 		log.Fatalf("open index: %v", err)
 	}
@@ -98,15 +57,9 @@ func main() {
 
 	index.PreTouch()
 
-	nProbeFast = envInt("N_PROBE_FAST", 8)
-	nProbeFull = envInt("N_PROBE_FULL", 28)
-
 	addr := os.Getenv("LISTEN_ADDR")
-	if addr == "" {
-		addr = ":8080"
-	}
 
-	log.Printf("listening on %s (nprobe fast=%d, full=%d)", addr, nProbeFast, nProbeFull)
+	log.Printf("listening on %s", addr)
 
 	server := &fasthttp.Server{
 		Handler:                       handler,

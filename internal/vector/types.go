@@ -1,4 +1,4 @@
-package vec
+package vector
 
 const Dim = 14
 const Sentinel = -1.0
