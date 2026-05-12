@@ -14,6 +14,7 @@ import (
 var index *ivf.Index
 var norm *vector.Norm
 var mccRisk vector.MccRisk
+var isReady bool
 
 const (
 	nProbeFast = 8
@@ -22,7 +23,11 @@ const (
 
 func handler(ctx *fasthttp.RequestCtx) {
 	if ctx.IsGet() {
-		ctx.SetStatusCode(200)
+		if isReady {
+			ctx.SetStatusCode(200)
+		} else {
+			ctx.SetStatusCode(503)
+		}
 		return
 	}
 
@@ -40,23 +45,30 @@ func handler(ctx *fasthttp.RequestCtx) {
 func main() {
 	var err error
 
-	norm, err = vector.LoadNorm("dataset/normalization.json")
+	dataDir := os.Getenv("DATA_DIR")
+	if dataDir == "" {
+		dataDir = "dataset"
+	}
+
+	norm, err = vector.LoadNorm(dataDir + "/normalization.json")
 	if err != nil {
 		log.Fatalf("load norm: %v", err)
 	}
 
-	mccRisk, err = vector.LoadMccRisk("dataset/mcc_risk.json")
+	mccRisk, err = vector.LoadMccRisk(dataDir + "/mcc_risk.json")
 	if err != nil {
 		log.Fatalf("load mcc: %v", err)
 	}
 
-	index, err = ivf.Open("dataset/ivf.bin")
+	index, err = ivf.Open(dataDir + "/ivf.bin")
 	if err != nil {
 		log.Fatalf("open index: %v", err)
 	}
 	defer index.Close()
 
 	index.PreTouch()
+
+	isReady = true
 
 	addr := os.Getenv("LISTEN_ADDR")
 
