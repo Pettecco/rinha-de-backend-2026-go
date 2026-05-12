@@ -2,39 +2,46 @@ package vector
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 )
 
-type Norm struct {
-	MaxAmount            float64 `json:"max_amount"`
-	MaxInstallments      float64 `json:"max_installments"`
-	AmountVsAvgRatio     float64 `json:"amount_vs_avg_ratio"`
-	MaxMinutes           float64 `json:"max_minutes"`
-	MaxKm                float64 `json:"max_km"`
-	MaxTxCount24h        float64 `json:"max_tx_count_24h"`
-	MaxMerchantAvgAmount float64 `json:"max_merchant_avg_amount"`
-}
-
+// LoadNorm reads normalization.json and validates that no constant is zero
+// (a zero would produce divide-by-zero or always-clamped values downstream).
 func LoadNorm(path string) (*Norm, error) {
-	data, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var n Norm
-	if err := json.Unmarshal(data, &n); err != nil {
+	norm := &Norm{}
+	if err := json.Unmarshal(raw, norm); err != nil {
 		return nil, err
 	}
-	return &n, nil
+	if norm.MaxAmount == 0 ||
+		norm.MaxInstallments == 0 ||
+		norm.AmountVsAvgRatio == 0 ||
+		norm.MaxMinutes == 0 ||
+		norm.MaxKm == 0 ||
+		norm.MaxTxCount24h == 0 ||
+		norm.MaxMerchantAvgAmount == 0 {
+		return nil, errors.New("normalization.json has zero constants")
+	}
+	return norm, nil
 }
 
-func LoadMccRisk(path string) (map[string]float64, error) {
-	data, err := os.ReadFile(path)
+// LoadMccRisk reads mcc_risk.json into a MccRisk map.
+func LoadMccRisk(path string) (MccRisk, error) {
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var m map[string]float64
-	if err := json.Unmarshal(data, &m); err != nil {
+	parsed := map[string]float64{}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
 		return nil, err
 	}
-	return m, nil
+	out := make(MccRisk, len(parsed))
+	for code, risk := range parsed {
+		out[code] = risk
+	}
+	return out, nil
 }

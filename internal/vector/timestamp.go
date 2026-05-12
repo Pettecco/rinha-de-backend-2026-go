@@ -1,75 +1,72 @@
 package vector
 
-import (
-	"math"
-	"time"
-)
+import "errors"
 
-func parseISO8601Z(s string) (year, month, day, hour, min, sec int, ok bool) {
-	if len(s) != 20 || s[4] != '-' || s[7] != '-' || s[10] != 'T' || s[13] != ':' || s[16] != ':' || s[19] != 'Z' {
-		return 0, 0, 0, 0, 0, 0, false
+// parseISO8601Z parses a `YYYY-MM-DDTHH:MM:SSZ` UTC timestamp. The format
+// is the exact one produced by the challenge's data-generator. Bypasses
+// time.Parse's general-purpose parser to save ~1µs per call.
+func parseISO8601Z(b []byte) (y, mo, d, h, mi, s int, err error) {
+	if len(b) != 20 ||
+		b[4] != '-' || b[7] != '-' ||
+		b[10] != 'T' ||
+		b[13] != ':' || b[16] != ':' ||
+		b[19] != 'Z' {
+		return 0, 0, 0, 0, 0, 0, errors.New("vector: bad iso8601 timestamp")
 	}
-	year = parseInt4(s[0:4])
-	month = parseInt2(s[5:7])
-	day = parseInt2(s[8:10])
-	hour = parseInt2(s[11:13])
-	min = parseInt2(s[14:16])
-	sec = parseInt2(s[17:19])
-	if month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || min > 59 || sec > 59 {
-		return 0, 0, 0, 0, 0, 0, false
-	}
-	return year, month, day, hour, min, sec, true
+	y = digit(b[0])*1000 + digit(b[1])*100 + digit(b[2])*10 + digit(b[3])
+	mo = digit(b[5])*10 + digit(b[6])
+	d = digit(b[8])*10 + digit(b[9])
+	h = digit(b[11])*10 + digit(b[12])
+	mi = digit(b[14])*10 + digit(b[15])
+	s = digit(b[17])*10 + digit(b[18])
+	return
 }
 
-func parseInt2(s string) int {
-	if len(s) != 2 {
-		return 0
+// dayOfWeekMonZero returns the day of week with Monday=0..Sunday=6 (the
+// spec's convention). Uses Tomohiko Sakamoto's algorithm — same as the
+// data-generator's `day_of_week()` in main.c, so we don't drift on edge
+// dates.
+func dayOfWeekMonZero(y, m, d int) int {
+	t := [12]int{0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}
+	if m < 3 {
+		y--
 	}
-	return int(s[0]-'0')*10 + int(s[1]-'0')
+	sun0 := (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7
+	return (sun0 + 6) % 7
 }
 
-func parseInt4(s string) int {
-	if len(s) != 4 {
-		return 0
+// daysSinceEpoch returns the number of days from 1970-01-01 to the given
+// proleptic-Gregorian date. Howard Hinnant's branchless formula —
+// handles leap years and centuries correctly.
+func daysSinceEpoch(y, m, d int) int {
+	if m <= 2 {
+		y--
 	}
-	return int(s[0]-'0')*1000 + int(s[1]-'0')*100 + int(s[2]-'0')*10 + int(s[3]-'0')
+	era := y / 400
+	if y < 0 && y%400 != 0 {
+		era--
+	}
+	yoe := y - era*400
+	mp := m
+	if m > 2 {
+		mp -= 3
+	} else {
+		mp += 9
+	}
+	doy := (153*mp+2)/5 + d - 1
+	doe := yoe*365 + yoe/4 - yoe/100 + doy
+	return era*146097 + doe - 719468
 }
 
-func ExtractHour(ts string) int {
-	if len(ts) < 13 {
-		return 0
-	}
-	h := parseInt2(ts[11:13])
-	if h < 0 || h > 23 {
-		return 0
-	}
-	return h
+// minutesBetween returns minutes from t1 → t2.
+// Each component is YYYY-MM-DD HH:MM:SS (UTC).
+func minutesBetween(y1, mo1, d1, h1, mi1, s1, y2, mo2, d2, h2, mi2, s2 int) float64 {
+	days := daysSinceEpoch(y2, mo2, d2) - daysSinceEpoch(y1, mo1, d1)
+	secs := int64(days)*86400 +
+		int64(h2-h1)*3600 +
+		int64(mi2-mi1)*60 +
+		int64(s2-s1)
+	return float64(secs) / 60.0
 }
 
-func ExtractDayOfWeek(ts string) int {
-	y, m, d, _, _, _, ok := parseISO8601Z(ts)
-	if !ok {
-		return 0
-	}
-	t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
-	w := int(t.Weekday())
-	if w == 0 {
-		return 6
-	}
-	return w - 1
-}
-
-func MinutesBetween(ts1, ts2 string) float64 {
-	y1, m1, d1, h1, min1, s1, ok1 := parseISO8601Z(ts1)
-	y2, m2, d2, h2, min2, s2, ok2 := parseISO8601Z(ts2)
-	if !ok1 || !ok2 {
-		return math.MaxFloat64
-	}
-	t1 := time.Date(y1, time.Month(m1), d1, h1, min1, s1, 0, time.UTC)
-	t2 := time.Date(y2, time.Month(m2), d2, h2, min2, s2, 0, time.UTC)
-	diff := t2.Sub(t1)
-	if diff < 0 {
-		diff = -diff
-	}
-	return diff.Minutes()
-}
+func digit(b byte) int { return int(b - '0') }

@@ -13,7 +13,7 @@ import (
 
 var index *ivf.Index
 var norm *vector.Norm
-var mccRisk map[string]float64
+var mccRisk vector.MccRisk
 const (
 	nProbeFast = 8
 	nProbeFull = 28
@@ -26,7 +26,7 @@ func handler(ctx *fasthttp.RequestCtx) {
 	}
 
 	var query [14]float64
-	if err := vector.FromPayload(ctx.PostBody(), &query, norm, mccRisk); err != nil {
+	if err := vector.FromPayload(ctx.PostBody(), norm, mccRisk, &query); err != nil {
 		ctx.SetStatusCode(400)
 		return
 	}
