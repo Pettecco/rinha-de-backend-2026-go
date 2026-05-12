@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"rinha26/internal/consts"
-	"rinha26/internal/ivf"
+	"rinha26/internal/ivf/builder"
 )
 
 type Reference struct {
@@ -20,8 +20,8 @@ func main() {
 		log.Fatalf("load: %v", err)
 	}
 
-	rng := ivf.NewLCG(consts.KMeansSeed)
-	cb, centroids, err := ivf.BuildIndex(refs.vectors, refs.labels, consts.K, rng)
+	rng := builder.NewLCG(consts.KMeansSeed)
+	cb, centroids, err := builder.BuildIndex(refs.vectors, refs.labels, consts.K, rng)
 	if err != nil {
 		log.Fatalf("build: %v", err)
 	}
@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("create: %v", err)
 	}
 
-	if err := ivf.WriteIndex(f, uint32(len(refs.vectors)), centroids, cb); err != nil {
+	if err := builder.WriteIndex(f, uint32(len(refs.vectors)), centroids, cb); err != nil {
 		f.Close()
 		log.Fatalf("write: %v", err)
 	}

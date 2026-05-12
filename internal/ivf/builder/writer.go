@@ -1,21 +1,22 @@
-package ivf
+package builder
 
 import (
 	"encoding/binary"
 	"io"
 	"math"
 	"rinha26/internal/consts"
+	"rinha26/internal/ivf"
 )
 
 func WriteIndex(w io.Writer, n uint32, centroids [][]float64, cb *ClusterBlocks) error {
-	header := make([]byte, HeaderSize)
-	h := &Header{
+	header := make([]byte, ivf.HeaderSize)
+	h := &ivf.Header{
 		N:   n,
 		Dim: uint16(consts.Dim),
 		K:   uint16(consts.K),
 	}
-	copy(h.Magic[:], Magic)
-	h.Version = Version
+	copy(h.Magic[:], ivf.Magic)
+	h.Version = ivf.Version
 	h.Scale = uint16(consts.Scale)
 	h.Write(header)
 	if _, err := w.Write(header); err != nil {
