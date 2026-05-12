@@ -2,8 +2,10 @@ package vector
 
 import "errors"
 
-/* parseISO8601Z parses a `YYYY-MM-DDTHH:MM:SSZ` UTC timestamp. The format
- is the exact one produced by the challenge's data-generator */
+/*
+parseISO8601Z parses a `YYYY-MM-DDTHH:MM:SSZ` UTC timestamp. The format
+is the exact one produced by the challenge's data-generator
+*/
 func parseISO8601Z(b []byte) (y, mo, d, h, mi, s int, err error) {
 	if len(b) != 20 ||
 		b[4] != '-' || b[7] != '-' ||
@@ -21,8 +23,10 @@ func parseISO8601Z(b []byte) (y, mo, d, h, mi, s int, err error) {
 	return
 }
 
-/* dayOfWeekMonZero returns the day of week with Monday=0..Sunday=6.
- Uses Tomohiko Sakamoto's algorithm */
+/*
+dayOfWeekMonZero returns the day of week with Monday=0..Sunday=6.
+Uses Tomohiko Sakamoto's algorithm
+*/
 func dayOfWeekMonZero(y, m, d int) int {
 	t := [12]int{0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}
 	if m < 3 {
@@ -32,8 +36,10 @@ func dayOfWeekMonZero(y, m, d int) int {
 	return (sun0 + 6) % 7
 }
 
-/* daysSinceEpoch returns the number of days from 1970-01-01 to the given
- proleptic-Gregorian date. */
+/*
+daysSinceEpoch returns the number of days from 1970-01-01 to the given
+proleptic-Gregorian date.
+*/
 func daysSinceEpoch(y, m, d int) int {
 	if m <= 2 {
 		y--
@@ -54,8 +60,10 @@ func daysSinceEpoch(y, m, d int) int {
 	return era*146097 + doe - 719468
 }
 
-/* minutesBetween returns minutes from t1 → t2.
- Each component is YYYY-MM-DD HH:MM:SS (UTC) */
+/*
+minutesBetween returns minutes from t1 → t2.
+Each component is YYYY-MM-DD HH:MM:SS (UTC)
+*/
 func minutesBetween(y1, mo1, d1, h1, mi1, s1, y2, mo2, d2, h2, mi2, s2 int) float64 {
 	days := daysSinceEpoch(y2, mo2, d2) - daysSinceEpoch(y1, mo1, d1)
 	secs := int64(days)*86400 +

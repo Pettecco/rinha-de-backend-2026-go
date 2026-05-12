@@ -36,8 +36,10 @@ func EncodeVec(in *[vector.Dim]float64, out *[vector.Dim]int16) {
 	}
 }
 
-/* DistSqRaw computes squared L2 distance between a query int16 vec and a raw
- int16 slice from mmap */
+/*
+DistSqRaw computes squared L2 distance between a query int16 vec and a raw
+int16 slice from mmap
+*/
 func DistSqRaw(query *[vector.Dim]int16, ref []int16) int64 {
 	_ = ref[vector.Dim-1] // bounds check hint
 	d0 := int64(query[0]) - int64(ref[0])

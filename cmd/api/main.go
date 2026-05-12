@@ -14,6 +14,7 @@ import (
 var index *ivf.Index
 var norm *vector.Norm
 var mccRisk vector.MccRisk
+
 const (
 	nProbeFast = 8
 	nProbeFull = 28

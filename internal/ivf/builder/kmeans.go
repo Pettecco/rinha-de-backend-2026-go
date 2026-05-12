@@ -2,8 +2,8 @@ package builder
 
 import (
 	"math"
-	"runtime"
 	"rinha26/internal/consts"
+	"runtime"
 )
 
 func distSqF64(a, b []float64) float64 {
