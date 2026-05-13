@@ -1,5 +1,6 @@
 services:
   api1: &api
+    platform: linux/amd64
     build:
       context: .
       dockerfile: cmd/api/Dockerfile
