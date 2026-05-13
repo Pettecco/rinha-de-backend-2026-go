@@ -1,5 +1,3 @@
-//go:build !amd64
-
 package simd
 
 type Block [112]int16
