@@ -1,40 +1,40 @@
-# Rinha de Backend 2026 — Go
+# Rinha de Backend 2026
 
-Minha solução pro desafio de detecção de fraude com busca vetorial. O objetivo é simples: receber transações via HTTP, converter em vetores 14-D, buscar as 5 mais parecidas num índice de 3 milhões de referências, e devolver um score de fraude.
+Minha solução pra Rinha de Backend 2026, o desafio de detecção de fraude com busca vetorial. Escrito em [Go](https://go.dev/), o sistema recebe transações de cartão via HTTP, transforma cada uma num vetor de 14 dimensões, busca as 5 transações mais parecidas num índice de 3 milhões de referências e devolve um score de fraude.
 
-Tudo rodando com **1 CPU e 350 MB de RAM**, dividido entre nginx + 2 instâncias de API.
+Com a limitação de fazer isso tudo rodando com **1 CPU e 350 MB de RAM**, divididos entre nginx e 2 instâncias da API.
 
 ## Como rodar
 
 ### Pré-requisitos
 
 - Docker + Docker Compose
-- k6 (opcional, pra rodar o benchmark local)
+- k6 (opcional, só se quiser rodar o benchmark local)
 
-### Passo a passo
+### Rodando o projeto
 
 ```bash
-# 1. Clonar o repo
-git clone https://github.com/SEU_USER/rinha-backend-2026-go.git
-cd rinha-backend-2026-go
+# Clone o repositório
+git clone https://github.com/pettecco/rinha-de-backend-2026-go.git
+cd rinha-de-backend-2026-go
 
-# 2. Build (gera o índice IVF a partir dos 3M de vetores)
-#    Primeira vez demora ~3min. Depois o Docker cacheia.
+# Build da imagem (gera o índice IVF com os 3M de vetores)
+# Primeira vez demora uns 3 minutos, depois o Docker cacheia
 make build
 
-# 3. Subir tudo (nginx + 2x API)
+# Sobe nginx + 2 APIs
 make up
 
-# 4. Verificar se está no ar
+# Testa se está up
 curl http://localhost:9999/ready
 
-# 5. Rodar o benchmark (precisa do k6 instalado)
+# Roda o benchmark (precisa do k6 instalado)
 make bench
 
-# 6. Ver logs
+# Acompanha os logs
 make logs
 
-# 7. Derrubar
+# Derruba tudo
 make down
 ```
 
@@ -47,55 +47,75 @@ k6 run test/test.js
 docker compose down
 ```
 
-## O que acontece por dentro
+## Arquitetura
 
-A API recebe JSON, transforma em vetor normalizado, busca num índice IVF pré-construído com mmap, e devolve a resposta em ~3-5ms.
+![Arquitetura](docs/arquitetura.png)
 
-### O fluxo
+O nginx divide as requisições entre as duas APIs via Unix Domain Sockets. Cada API tem seu próprio limite de memória e CPU, e ambas compartilham o mesmo índice IVF via volume Docker.
 
-1. **Parse** — `jsonparser.EachKey` varre o JSON uma vez, extraindo os campos direto em `[]byte` (zero alocações de string).
-2. **Vetorização** — 14 dimensões são calculadas: amount normalizado, hora do dia, dia da semana, distância, etc. Timestamps são parseados com aritmética pura (sem `time.Parse`).
-3. **Quantização** — float64 vira int16 (escala 10000) pra caber menos na cache e processar mais rápido.
-4. **Busca IVF** — O índice tem 4096 clusters. O estágio rápido varre 8, o completo varre 28 (só quando o resultado tá no limite entre aprovar/reprovar).
-5. **Distância SIMD** — Em CPUs Intel/AMD, 8 dimensões são processadas de uma vez com AVX2. Em ARM, fallback escalar.
-6. **TopK** — Array plano de 5 posições com scan linear. Sem heap, sem ponteiros.
-7. **Resposta** — JSON pré-formatado, escrito direto no buffer.
-
-### Por que é rápido
-
-| Técnica            | Impacto                                    |
-| ------------------ | ------------------------------------------ |
-| fasthttp           | Zero alloc por request                     |
-| UDS (sem TCP)      | ~30µs a menos por request                  |
-| mmap do índice     | Sem cópia pra memória, o OS gerencia       |
-| PreTouch           | Páginas carregadas antes do tráfego chegar |
-| sync.Pool          | Buffer de 32KB reusado, sem GC pressure    |
-| SIMD AVX2          | 8 dimensões por instrução                  |
-| Loops desenrolados | Sem overhead de loop no hot path           |
-
-## Estrutura do projeto
+## 📂 Estrutura do projeto
 
 ```
-cmd/api/              API HTTP (fasthttp, UDS)
-cmd/indexer/          Gera o ivf.bin a partir do dataset
-internal/
-  vector/             Vetorização do payload
-  quantize/           Quantização float64 → int16
-  ivf/                Busca IVF (runtime)
-  ivf/builder/        Build do índice (k-means, writer)
-  simd/               AVX2 intrinsics + fallback escalar
-  consts/             Constantes globais
-resources/            Dataset (references.json.gz, etc)
-test/                 Script k6 + dados de teste
+.
+├── cmd/
+│   ├── api/              # API HTTP (fasthttp, Unix socket)
+│   └── indexer/          # Gera o ivf.bin a partir do dataset
+├── internal/
+│   ├── consts/           # Constantes globais
+│   ├── ivf/              # Busca IVF (runtime)
+│   │   └── builder/      # Build do índice (k-means, writer)
+│   ├── quantize/         # Quantização float64 → int16
+│   ├── simd/             # AVX2 intrinsics + fallback escalar
+│   └── vector/           # Vetorização do payload
+├── dataset/              # references.json.gz, mcc_risk.json, normalization.json
+├── test/                 # Script k6 + dados de teste
+├── docker-compose.yml
+├── nginx.conf
+└── Makefile
 ```
 
 ## Configuração
 
 Variáveis de ambiente no `docker-compose.yml`:
 
-| Variável       | Padrão | O que faz                         |
-| -------------- | ------ | --------------------------------- |
-| `N_PROBE_FAST` | 8      | Clusters no estágio rápido        |
-| `N_PROBE_FULL` | 28     | Clusters no estágio completo      |
-| `GOMAXPROCS`   | 1      | Threads do Go (1 evita contenção) |
-| `GOMEMLIMIT`   | 150MiB | Limite soft de heap               |
+| Variável       | Padrão | O que faz                                              |
+| -------------- | ------ | ------------------------------------------------------ |
+| `N_PROBE_FAST` | 8      | Clusters varridos no estágio rápido                    |
+| `N_PROBE_FULL` | 28     | Clusters varridos no estágio completo (casos de borda) |
+| `GOMAXPROCS`   | 1      | Threads do Go (1 evita contenção)                      |
+| `GOMEMLIMIT`   | 150MiB | Limite soft de heap                                    |
+
+## O desafio
+
+A Rinha de Backend 2026 é sobre detecção de fraude com busca vetorial. Para cada transação recebida:
+
+1. Transforma o payload num vetor de 14 dimensões
+2. Busca as 5 transações mais parecidas nos 3 milhões de referências
+3. Calcula `fraud_score = fraudes_entre_as_5 / 5`
+4. Responde com `approved = fraud_score < 0.6`
+
+O contrato completo da API se encontra em [docs/br/API.md](./docs/br/API.md) e as regras de detecção em [docs/br/REGRAS_DE_DETECCAO.md](./docs/br/REGRAS_DE_DETECCAO.md).
+
+## Documentação completa (fornecido pela Rinha)
+
+- [API.md](./docs/br/API.md) — Contrato dos endpoints
+- [ARQUITETURA.md](./docs/br/ARQUITETURA.md) — Restrições de infra
+- [REGRAS_DE_DETECCAO.md](./docs/br/REGRAS_DE_DETECCAO.md) — As 14 dimensões e fórmulas
+- [BUSCA_VETORIAL.md](./docs/br/BUSCA_VETORIAL.md) — Intro a busca vetorial
+- [DATASET.md](./docs/br/DATASET.md) — Formato dos arquivos de referência
+- [AVALIACAO.md](./docs/br/AVALIACAO.md) — Como a pontuação é calculada
+- [SUBMISSAO.md](./docs/br/SUBMISSAO.md) — Como participar
+- [FAQ.md](./docs/br/FAQ.md) — Dúvidas frequentes
+
+## Tecnologias usadas
+
+- **Go 1.24** — Linguagem principal
+- **fasthttp** — HTTP server de alta performance
+- **jsonparser** — Parse de JSON sem alocações
+- **Docker + nginx** — Load balancing e containerização
+- **IVF (Inverted File Index)** — Índice de busca vetorial
+- **AVX2 intrinsics** — SIMD pra distância entre vetores
+
+## Créditos
+
+Desafio criado pela comunidade da Rinha de Backend. Mais informações em https://github.com/zanfranceschi/rinha-de-backend-2026
