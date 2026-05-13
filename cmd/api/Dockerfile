@@ -4,7 +4,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN mkdir -p dataset && cp resources/references.json.gz dataset/
+RUN mkdir -p dataset && cp resources/references.json.gz dataset/ && cp resources/normalization.json dataset/ && cp resources/mcc_risk.json dataset/
 RUN CGO_ENABLED=1 go build -o indexer ./cmd/indexer
 RUN CGO_ENABLED=1 go build -o api ./cmd/api
 RUN ./indexer
