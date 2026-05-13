@@ -5,18 +5,20 @@ import "math"
 const topK = 5
 
 func pickTopFromDists(distances []float64, K, nProbe int) []uint32 {
-	chosen := make([]uint32, 0, nProbe)
-	chosenDistances := make([]float64, 0, nProbe)
+	var chosen [28]uint32
+	var chosenDistances [28]float64
 	worst := math.MaxFloat64
 	worstIdx := 0
+	count := 0
 
 	for c := 0; c < K; c++ {
 		d := distances[c]
-		if len(chosen) < nProbe {
-			chosen = append(chosen, uint32(c))
-			chosenDistances = append(chosenDistances, d)
-			if len(chosen) == nProbe {
-				worstIdx = indexOfMax(chosenDistances)
+		if count < nProbe {
+			chosen[count] = uint32(c)
+			chosenDistances[count] = d
+			count++
+			if count == nProbe {
+				worstIdx = indexOfMax(chosenDistances[:nProbe])
 				worst = chosenDistances[worstIdx]
 			}
 			continue
@@ -24,11 +26,11 @@ func pickTopFromDists(distances []float64, K, nProbe int) []uint32 {
 		if d < worst {
 			chosen[worstIdx] = uint32(c)
 			chosenDistances[worstIdx] = d
-			worstIdx = indexOfMax(chosenDistances)
+			worstIdx = indexOfMax(chosenDistances[:nProbe])
 			worst = chosenDistances[worstIdx]
 		}
 	}
-	return chosen
+	return chosen[:count]
 }
 
 func indexOfMax(xs []float64) int {

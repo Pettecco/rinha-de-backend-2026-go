@@ -1,9 +1,18 @@
 package ivf
 
 import (
+	"sync"
+
 	"rinha26/internal/consts"
 	"rinha26/internal/quantize"
 )
+
+var distsBufPool = sync.Pool{
+	New: func() any {
+		buf := make([]float64, consts.K)
+		return &buf
+	},
+}
 
 func (idx *Index) FraudScore(query [consts.Dim]float64, nProbeFast, nProbeFull int) int {
 	K := idx.K()
@@ -22,7 +31,10 @@ func (idx *Index) FraudScore(query [consts.Dim]float64, nProbeFast, nProbeFull i
 		queryI16[d] = quantize.EncodeFloat(query[d])
 	}
 
-	dists := make([]float64, K)
+	bufPtr := distsBufPool.Get().(*[]float64)
+	dists := (*bufPtr)[:K]
+	defer distsBufPool.Put(bufPtr)
+
 	computeCentroidDistances(query, idx.CentroidsF64Data(), idx.CentroidNormsData(), K, dists)
 
 	fastChosen := pickTopFromDists(dists, K, nProbeFast)
