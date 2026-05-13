@@ -1,0 +1,7 @@
+{
+  "participants": ["Petterson Sousa"],
+  "social": ["https://github.com/Pettecco"],
+  "source-code-repo": "https://github.com/Pettecco/rinha-backend-2026-go",
+  "stack": ["go", "nginx", "fasthttp", "ivf", "simd"],
+  "open_to_work": true
+}

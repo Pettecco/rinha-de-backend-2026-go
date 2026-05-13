@@ -1,4 +1,0 @@
-*.bin
-venv/
-dataset/
-test/results.json
