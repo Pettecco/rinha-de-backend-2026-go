@@ -53,7 +53,7 @@ docker compose down
 
 O nginx divide as requisições entre as duas APIs via Unix Domain Sockets. Cada API tem seu próprio limite de memória e CPU, e ambas compartilham o mesmo índice IVF via volume Docker.
 
-## 📂 Estrutura do projeto
+## Estrutura do projeto
 
 ```
 .
