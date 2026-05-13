@@ -1,11 +1,12 @@
 FROM golang:1.24-alpine AS builder
+RUN apk add --no-cache build-base
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN mkdir -p dataset && cp resources/references.json.gz dataset/
-RUN go build -o indexer ./cmd/indexer
-RUN go build -o api ./cmd/api
+RUN CGO_ENABLED=1 go build -o indexer ./cmd/indexer
+RUN CGO_ENABLED=1 go build -o api ./cmd/api
 RUN ./indexer
 
 FROM alpine:3.20

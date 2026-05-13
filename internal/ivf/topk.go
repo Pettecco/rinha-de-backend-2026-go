@@ -1,8 +1,10 @@
 package ivf
 
-import "math"
+import (
+	"math"
 
-const topK = 5
+	"rinha26/internal/vector"
+)
 
 func pickTopFromDists(distances []float64, K, nProbe int) []uint32 {
 	var chosen [28]uint32
@@ -43,14 +45,14 @@ func indexOfMax(xs []float64) int {
 	return idx
 }
 
-func updateTopK(topDistances *[topK]int64, topLabels *[topK]uint8, worstIdx int, candidateDist int64, candidateLabel uint8) int {
+func updateTopK(topDistances *[vector.TopK]int64, topLabels *[vector.TopK]uint8, worstIdx int, candidateDist int64, candidateLabel uint8) int {
 	if candidateDist >= topDistances[worstIdx] {
 		return worstIdx
 	}
 	topDistances[worstIdx] = candidateDist
 	topLabels[worstIdx] = candidateLabel
 	newWorst := 0
-	for k := 1; k < topK; k++ {
+	for k := 1; k < vector.TopK; k++ {
 		if topDistances[k] > topDistances[newWorst] {
 			newWorst = k
 		}

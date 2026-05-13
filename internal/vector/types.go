@@ -4,6 +4,9 @@ package vector
 // Dim is the fixed dimensionality of the fraud-score vector
 const Dim = 14
 
+// TopK is the number of nearest neighbors used for fraud scoring.
+const TopK = 5
+
 const Sentinel float64 = -1.0
 
 const DefaultMccRisk float64 = 0.5
