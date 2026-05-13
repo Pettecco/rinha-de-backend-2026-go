@@ -1,7 +1,7 @@
 services:
   api1: &api
     platform: linux/amd64
-    image: ghcr.io/Pettecco/rinha-backend-2026-go:latest
+    image: ghcr.io/pettecco/rinha-de-backend-2026-go:latest
     environment:
       LISTEN_ADDR: '/run/sock/api1.sock'
       GOMAXPROCS: '1'
